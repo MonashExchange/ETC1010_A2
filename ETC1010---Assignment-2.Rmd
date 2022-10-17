@@ -1,0 +1,162 @@
+---
+title: "ETC1010 - Assignment 2"
+author: "Agam Bhushan"
+date: "2022-10-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Introdcution
+
+Official Starbucks Nutritional dataset from the pdf Starbucks Coffee Company Beverage Nutrition Information. The pdf version is 22 pages and only steamed milk data is omitted for this dataset.
+
+Hat-tip to PythonCoderUnicorn for their contribution!
+
+## Read the data from TidyTuesday
+
+```{r echo = FALSE}
+
+starbucks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-12-21/starbucks.csv')
+```
+
+## Loading packages needed for analysis
+
+```{r libraries, echo = FALSE}
+library(skimr)
+library(tidyverse)
+library(here)
+library(dplyr)
+library(readr)
+library(tibble)
+library(stringr)
+library(skimr)
+library(finalfit)
+library(modelsummary)
+```
+
+## Let's have a look at our data
+
+```{r investigate-data}
+rmarkdown::paged_table(starbucks)
+```
+
+## Research questions
+
+-   people don't know how much sugar or caffeine their drinks contain research has shown bla bla sugar shouldn't go above this level limitations, this data was from this year ..
+
+-   Present questions: whats the healthiest option
+
+-   Which drink has the highest caffeine
+
+-   
+
+## Time to clean our data
+
+-   Check if there N/A values
+-   No duplicates
+-   
+
+```{r clean-data}
+
+starbucks %>% skim()
+starbucks %>% ff_glimpse()
+
+#Check for unique no. of names to categorize products into catogories. 
+(unique_prod_names <- unique(starbucks$product_name))
+
+```
+
+```{r categorize-data}
+
+Hot_Coffees <- c("brewed coffee - dark roast", "brewed coffee - decaf pike place roast", "brewed coffee - medium roast", "brewed coffee - True North Blend Blonde roast", "Caffè Misto", "Clover Brewed Coffee - Dark Roast", "Clover Brewed Coffee -  Light Roast", "Clover Brewed Coffee - Medium Roast", "Espresso - Caffè Americano", "Caffè Latte", "Caffè Mocha", "Cappuccino", "Caramel Macchiato", "Cinnamon Dolce Latte", "Espresso", "Espresso con panna", "Espresso Macchiato", "Flat White", "Latte Macchiato", "Skinny Cinnamon Dolce Latte", "Skinny Mocha", "White Chocolate Mocha", "Espresso shot")
+
+Hot_Teas <- c("Chai tea Latte", "Earl Grey Brewed Tea", "Emperor's Clouds and Mist Brewed Tea", "English Breakfast Black Brewed Tea", "English Breakfast Black Tea Latte", "Green Tea Latte", "Jade Citrus Mint Brewed tea", "London Fog Tea Latte", "Mint Majesty Brewed Tea", "Oprah Chai Herbal Brewed Tea", "Oprah Cinnamon Chai Brewed Tea", "Oprah Cinnamon Chai Latte", "Passion Tango Brewed Tea", "Peach Tranquility Brewed Tea", "Youthberry Brewed Tea")
+
+Hot_Drinks <- c("Caramel Apple Spice", "Hot Chocolate", "Skinny Hot Chocolate", "White Hot Chocolate")
+
+Frappuccino <- c("Caffè Vanilla Frappuccino Blended", "Caramel Frappuccino Blended", "Coffee Frappuccino Blended", "Espresso Frappuccino Blended", "Java Chip Frappuccino Blended", "Caffè Vanilla Frappuccino Light", "Caramel Frappuccino Light", "Coffee Frappuccino Light", "Espresso Frappuccino Light", "Java Chip Light Frappuccino", "Mocha Light Frappuccino", "Chai Crème Frappuccino Blended", "Double Chocolaty Chip Crème Frappuccino Blended", "Green Tea Crème Frappuccino Blended", "Oprah Cinnamon Chai Crème Frappuccino Blended", "Strawberries & Crème Frappuccino Blended", "Vanilla Bean Crème Frappuccino Blended")
+
+Cold_Coffees <- c("Iced Coffee", "Iced Coffee with milk", "Cold Brewed Coffee", "Vanilla Sweet Cream Cold Brew", "Espresso - Iced Caffè Americano", "Iced Caffè Latte", "Iced Caffè Mocha", "Iced Caramel Macchiato", "Iced Skinny Cinnamon Dolce Latte", "Iced Skinny Mocha", "Starbucks Doubleshot on ice", "Iced White Chocolate Mocha")
+
+Iced_Teas <- c("Iced Black tea", "Iced Black tea Lemonade", "Iced Chai Tea Latte", "Iced Green Tea Latte", "Iced Green Tea", "Iced Green Tea Lemonade", "Iced Mango Black Tea", "Iced Mango Black Tea Lemonade", "Iced Oprah Cinnamon Chai Latte", "Iced Passion Tango Tea", "Iced Passion Tango Tea Lemonade", "Peach Iced Green Tea", "Peach Iced Green Tea Lemonade")
+
+# Add categorical variable to the data frame
+starbucks$product_category <-
+    as.factor(if_else(str_detect(
+        starbucks$product_name, paste(Frappuccino, collapse = "|")), 'Frappuccino',
+        if_else(
+            str_detect(starbucks$product_name, paste(Hot_Teas, collapse = "|")),
+            'Hot Teas',
+            if_else(str_detect(
+                starbucks$product_name, 
+                paste(Hot_Drinks, collapse = "|")), 'Hot Drinks',
+                if_else(str_detect(
+                    starbucks$product_name,
+                    paste(Iced_Teas, collapse = "|")), 'Iced Teas',
+                    if_else(str_detect(
+                        starbucks$product_name,
+                        paste(Cold_Coffees, collapse = "|")), 'Cold Coffees',
+                        if_else(str_detect(
+                            starbucks$product_name,
+                            paste(Hot_Coffees, collapse = "|")), 'Hot Coffees',
+                            'Cold Drinks'
+                        )
+                    )
+                )
+            )
+        )
+    ))
+
+```
+
+```{r}
+
+t1 <- datasummary( ("Calories" = calories ) + 
+             ("Whip" = whip ) +
+             ("Serving size (ml)" = serv_size_m_l) +
+             ("Total fat (g)" = total_fat_g) +
+             ("Staurated fat (g)" = saturated_fat_g) +
+             ("Trans fat (g)" = trans_fat_g) +
+             ("Cholesterol (mg)" = cholesterol_mg) +
+             ("Sodium (mg)" = sodium_mg) +
+             ("Total carbs (g)" = total_carbs_g) +
+             ("Fiber (g)" = fiber_g) +
+             ("Sugar (g)" = sugar_g) +
+             ("Caffeine (mg)" = caffeine_mg) ~
+             Mean + Median + SD + Min + Max, 
+             data = starbucks) %>% 
+             kable_minimal(full_width = F, position = "center" , font_size = 11)
+
+
+```
+
+
+
+```{r}
+#grouping data to create boxplots based on drink category
+# starbucks_coffees <- starbucks %>% 
+#     select(product_name, calories) %>% 
+#     group_by(product_name) %>%
+#     filter(product_name = )
+
+#starbucks_wide <- pivot_wider(data = starbucks,
+             #names_from = product_name,
+             #values_from = size)```
+
+
+## Simple analysis
+
+```
+
+
+-   tabs with exploratory analysis: Maybe like 4 graphs
+-   histogram of how many grams of sugar, fat, calories
+
+
+```
+
+
+## 
